@@ -1,0 +1,19 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  BucketName:
+    Description: Enter bucket name prefix is custom-s3-YOURBUCKETNAME-AccountId
+    Type: String
+    
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: 
+        !Join
+          - ''
+          - - 'custom-s3-'
+            - !Ref BucketName
+            - '-'
+            - !Ref AWS::AccountId
+      AccessControl: PublicRead
+          
