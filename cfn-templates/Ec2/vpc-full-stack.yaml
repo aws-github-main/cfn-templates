@@ -1,51 +1,26 @@
+#Author: Birju
+# template to create user defined vpc.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: VPC Name
+        Parameters:
+          - VpcName
 Parameters:
-  customVpcId:
-    Description: Enter existing vpc id
-    Type: AWS::EC2::VPC::Id
-  customKeyPair:
-    Description: Select existing key pair
-    Type: AWS::EC2::KeyPair::KeyName
-  customSubnetId:
-    Description: Select existing Subnet Id
-    Type: AWS::EC2::Subnet::Id
-Mappings:
-  RegionMap:
-    us-east-1:
-      AMI: ami-1853ac65
-    us-west-1:
-      AMI: ami-bf5540df
-    eu-west-1:
-      AMI: ami-3bfab942
-    ap-southeast-1:
-      AMI: ami-e2adf99e
-    ap-southeast-2:
-      AMI: ami-43874721
+  VpcName:
+    Type: String
+    Description: Enter VPC Name
+    
 Resources:
-  Ec2Instance:
-    Type: AWS::EC2::Instance
+  DefaultVPC:
+    Type: AWS::EC2::VPC
     Properties:
-      InstanceType: t2.micro
-      ImageId: !FindInMap
-        - RegionMap
-        - !Ref AWS::Region
-        - AMI
-      InstanceType: t2.micro
-      SecurityGroupIds: 
-        - !GetAtt SecurityGroup.GroupId
-      KeyName: !Ref customKeyPair
+      CidrBlock: 10.0.0.0/28
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
       Tags:
         - Key: Name
-          Value: "EC2 instance user input"
-  SecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription:  SG created via aws cloudformation stack ec2-user
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          ToPort: 22
-          FromPort: 22
-          CidrIp: 0.0.0.0/0
-    VpcId: !Ref customVpcId
-      Tags:
-        - Key: Name
-          Value: ec2-sg
+          Value: !Ref VpcName
