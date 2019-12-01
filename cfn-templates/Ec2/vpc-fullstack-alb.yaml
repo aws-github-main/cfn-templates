@@ -1,0 +1,110 @@
+#Author: Birju
+# template to create user defined vpc.
+Mappings:
+  RegionMap:
+    us-east-1:
+      AMI: ami-1853ac65
+    us-west-1:
+      AMI: ami-bf5540df
+    eu-west-1:
+      AMI: ami-3bfab942
+    ap-southeast-1:
+      AMI: ami-e2adf99e
+    ap-southeast-2:
+      AMI: ami-43874721
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Application Load Balancer Name
+        Parameters:
+          - albName
+      - Label:
+          default: ALB Security Group Name
+        Parameters:
+          - albSecurityGroupName
+      - Label:
+          default: VPC Availability Zones
+        Parameters:
+          - AvailabilityZone1
+          - AvailabilityZone2
+      - Label:
+          default: Select subnets
+        Parameters:
+          - SubnetIds
+Parameters:
+
+  albSecurityGroupName:
+    Type: String
+    Description: Enter ALB Security Group
+    Default: alb-ec2
+  albName:
+    Type: String
+    Description: Enter Application Load Balancer Name
+    Default: alb-sg
+  AvailabilityZone1:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Description: Availability Zone 1
+  AvailabilityZone2:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Description: Availability Zone 2
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Select subnets
+Resources:
+  Ec2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: !FindInMap
+        - RegionMap
+        - !Ref AWS::Region
+        - AMI
+      Tags:
+        - Key: Name
+          Value: !Join
+            - ""
+            - - "ec2 -"
+              - !Ref AWS::StackName
+      SecurityGroupIds:
+        - !GetAtt SecurityGroup.GroupId
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "EC2 Security Group created by stack"
+      GroupName: ec2-security-group-cfn
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !GetAtt AlbSecurityGroup.GroupId
+      Tags:
+        - Key: Name
+          Value: "ec2-sg"
+      
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Ref albName
+      Scheme: internet-facing
+      IpAddressType: ipv4
+      SecurityGroups:
+        - !GetAtt AlbSecurityGroup.GroupId
+      Subnets: !Ref SubnetIds
+      Tags:
+        - Key: Name
+          Value: !Ref albName
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: Ec2-alb-sg
+      GroupDescription: EC2 Application Load balancer created from cloud formation
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          ToPort: 80
+          FromPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: alb-sg-cft
+      
