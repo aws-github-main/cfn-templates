@@ -1,17 +1,10 @@
 # Author: Birju 
-# enable versioning on bucket
+# enable versioning on bucket and adding lifecycle configuration on objects
 Parameters:
   BucketName:
     Type: String
-    Description: Enter bucket name prefix is custom-s3-YOURBUCKETNAME-AccountId
+    Description: Enter bucket name. Prefix is custom-s3-YOURBUCKETNAME-AccountId
     Type: String
-  EnableVersioning:
-    Description: enable versioning
-    Type: String
-    AllowedValues:
-      - Enabled
-      - Suspended
-    Default: Enabled
 Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
@@ -20,12 +13,14 @@ Resources:
         !Join
           - ''
           - - 'custom-s3-cloudformation-'
-            - !GetAtt S3Bucket.BucketName
+            - !Ref BucketName
             - '-'
             - !Ref AWS::AccountId
       AccessControl: PublicRead
-      VersioningConfiguration:
-        Status: !Ref EnableVersioning
+      WebsiteConfiguration:
+        ErrorDocument: error.html
+        IndexDocument: index.html
+          
       Tags: 
         - Key: Name
           Value: 
@@ -38,4 +33,4 @@ Resources:
 Outputs:
   bucketname:
     Description: Bucket Name
-    Value: !GetAtt S3Bucket.BucketName
+    Value: !Ref BucketName
