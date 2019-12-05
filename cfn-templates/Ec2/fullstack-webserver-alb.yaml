@@ -124,6 +124,15 @@ Resources:
       Tags:
         - Key: Name
           Value: !Ref albName
+  AppLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroupResource
+    
   AlbSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:

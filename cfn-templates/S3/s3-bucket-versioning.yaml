@@ -1,0 +1,46 @@
+# Author: Birju 
+# enable versioning on bucket
+Parameters:
+  BucketName:
+    Type: String
+    Description: Enter bucket name prefix is custom-s3-YOURBUCKETNAME-AccountId
+    Type: String
+  EnableVersioning:
+    Description: enable versioning
+    Type: String
+    AllowedValues:
+      - Enabled
+      - Suspended
+    Default: Yes
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: 
+        !Join
+          - ''
+          - - 'custom-s3-cloudformation-'
+            - !Ref BucketName
+            - '-'
+            - !Ref AWS::AccountId
+      AccessControl: PublicRead
+      VersioningConfiguration:
+        Status: !Ref EnableVersioning
+      Tags: 
+        - Key: Name
+          Value: 
+            !Join
+              - ''
+              - - 'custom-s3-cloudformation-'
+                - !Ref BucketName
+                - '-'
+                - !Ref AWS::AccountId            
+Outputs:
+  bucket-name:
+    Description: Bucket Name
+    Value: !Ref BucketName
+  bucket-created-date:
+    Description:  Date created
+    Value: 
+  
+          

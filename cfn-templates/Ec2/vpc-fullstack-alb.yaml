@@ -16,6 +16,18 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
+          default:  Enter Ec2 Instance Name
+        Parameters:
+          - InstanceName
+      - Label:
+          default:  Enter Ec2 Instance Type
+        Parameters:
+          - InstanceType  
+      - Label:
+          default: Enter Vpc Id
+        Parameters:
+          - VpcIdUser
+      - Label:
           default: Application Load Balancer Name
         Parameters:
           - albName
@@ -24,16 +36,22 @@ Metadata:
         Parameters:
           - albSecurityGroupName
       - Label:
-          default: VPC Availability Zones
-        Parameters:
-          - AvailabilityZone1
-          - AvailabilityZone2
-      - Label:
           default: Select subnets
         Parameters:
           - SubnetIds
 Parameters:
-
+  InstanceName:
+    Type: String
+    Default: alb-webserver-1
+  InstanceType:
+    Type: String
+    Default: t2.micro
+  KeyPair:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description:  Select KeyPair Name
+  VpcIdUser:
+    Type: AWS::EC2::VPC::Id
+    Description:  Select Vpc ID
   albSecurityGroupName:
     Type: String
     Description: Enter ALB Security Group
@@ -42,46 +60,63 @@ Parameters:
     Type: String
     Description: Enter Application Load Balancer Name
     Default: alb-sg
-  AvailabilityZone1:
-    Type: AWS::EC2::AvailabilityZone::Name
-    Description: Availability Zone 1
-  AvailabilityZone2:
-    Type: AWS::EC2::AvailabilityZone::Name
-    Description: Availability Zone 2
   SubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
     Description: Select subnets
 Resources:
   Ec2Instance:
     Type: AWS::EC2::Instance
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          packages:
+            yum:
+              httpd: []
+              php: []
+          files:
+            /www/var/html/index.php:
+              content: !Sub |
+                <?php print "This is web server with application load balancer. "; ?>
+          services:
+            sysvinit:
+              httpd:
+                enabled: true
+                EnsureRunning: true
     Properties:
-      InstanceType: t2.micro
+      InstanceType: !Ref InstanceType
       ImageId: !FindInMap
         - RegionMap
         - !Ref AWS::Region
         - AMI
+      KeyName: !Ref KeyPair
+      SubnetId: subnet-41c1b126
       Tags:
         - Key: Name
-          Value: !Join
-            - ""
-            - - "ec2 -"
-              - !Ref AWS::StackName
+          Value: !Ref InstanceName
       SecurityGroupIds:
-        - !GetAtt SecurityGroup.GroupId
+        - !Ref SecurityGroup
+      UserData:
+        'Fn::Base64':
+          !Sub |
+            #!/bin/bash -xe
+            # confirm aws cfn is up-to-date
+            yum install -y aws-cfn-bootstrap
+            #install files and services from metadata 
+            /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource Ec2Instance --region ${AWS::Region}
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: "EC2 Security Group created by stack"
-      GroupName: ec2-security-group-cfn
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
           SourceSecurityGroupId: !GetAtt AlbSecurityGroup.GroupId
+
       Tags:
-        - Key: Name
-          Value: "ec2-sg"
-      
+          - Key: Name
+            Value: "ec2-sg"
+      VpcId: !Ref VpcIdUser
   ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
@@ -89,16 +124,33 @@ Resources:
       Scheme: internet-facing
       IpAddressType: ipv4
       SecurityGroups:
-        - !GetAtt AlbSecurityGroup.GroupId
+        - !Ref  AlbSecurityGroup
       Subnets: !Ref SubnetIds
       Tags:
         - Key: Name
           Value: !Ref albName
+  AlbListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref AlbTargetGroup
+  AlbTargetGroup:
+    Type:  AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 80
+      Protocol: HTTP
+      VpcId: !Ref VpcIdUser
+      Targets:
+        - Id: !Ref Ec2Instance
   AlbSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupName: Ec2-alb-sg
-      GroupDescription: EC2 Application Load balancer created from cloud formation
+      VpcId: !Ref VpcIdUser
+      GroupDescription: ALB SecurityGroup
       SecurityGroupIngress:
         - IpProtocol: tcp
           ToPort: 80
@@ -107,4 +159,30 @@ Resources:
       Tags:
         - Key: Name
           Value: alb-sg-cft
-      
+Outputs:
+  PublicDns:
+    Description: The public DNS
+    Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}'
+  opVpcId:
+    Description: The VPC created
+    Value: !Ref VpcIdUser
+  opAlbName:
+    Description: The application load balancer name
+    Value: !Ref albName 
+  opImageId:
+    Description: Image Id
+    Value:
+      Fn::FindInMap:
+      - RegionMap
+      - !Ref AWS::Region
+      - AMI
+  instanceName:
+    Description: 'Ec2 Instance created by stack: '
+    Value: !Sub '${AWS::StackName}'
+  AlbSecurityGroup:
+    Description:  ALB SecurityGroup
+    Value: !Ref AlbSecurityGroup
+  EC2InstanceSecurityGroup:
+    Description: EC2 instance security group
+    Value: !Ref SecurityGroup
+    
