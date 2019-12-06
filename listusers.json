@@ -1,0 +1,80 @@
+{
+    "Users": [
+        {
+            "UserName": "edXDeployingUser", 
+            "PasswordLastUsed": "2019-04-08T15:41:27Z", 
+            "CreateDate": "2019-04-08T15:37:39Z", 
+            "UserId": "AIDA5VW4QUB2FFQC6XXNB", 
+            "Path": "/", 
+            "Arn": "arn:aws:iam::939986559092:user/edXDeployingUser"
+        }, 
+        {
+            "UserName": "edXOptimizingUser", 
+            "PasswordLastUsed": "2019-08-23T12:06:06Z", 
+            "CreateDate": "2019-04-07T12:41:48Z", 
+            "UserId": "AIDA5VW4QUB2A6K5Q32ZU", 
+            "Path": "/", 
+            "Arn": "arn:aws:iam::939986559092:user/edXOptimizingUser"
+        }, 
+        {
+            "UserName": "guest", 
+            "Path": "/", 
+            "CreateDate": "2019-03-22T18:12:32Z", 
+            "UserId": "AIDAJUCF4AO3D4PY7H22O", 
+            "Arn": "arn:aws:iam::939986559092:user/guest"
+        }, 
+        {
+            "UserName": "guest-user", 
+            "PasswordLastUsed": "2019-07-04T21:13:43Z", 
+            "CreateDate": "2019-07-04T21:11:30Z", 
+            "UserId": "AIDA5VW4QUB2EOJULSKGS", 
+            "Path": "/", 
+            "Arn": "arn:aws:iam::939986559092:user/guest-user"
+        }, 
+        {
+            "UserName": "myEncrypter", 
+            "Path": "/", 
+            "CreateDate": "2019-04-24T17:27:56Z", 
+            "UserId": "AIDA5VW4QUB2PAB2KHQNH", 
+            "Arn": "arn:aws:iam::939986559092:user/myEncrypter"
+        }, 
+        {
+            "UserName": "myKeyManager", 
+            "Path": "/", 
+            "CreateDate": "2019-04-24T17:26:39Z", 
+            "UserId": "AIDA5VW4QUB2FT37ZAM64", 
+            "Arn": "arn:aws:iam::939986559092:user/myKeyManager"
+        }, 
+        {
+            "UserName": "rlimbach", 
+            "PasswordLastUsed": "2019-08-11T13:21:41Z", 
+            "CreateDate": "2019-08-11T12:59:54Z", 
+            "UserId": "AIDA5VW4QUB2GQR3WEEPR", 
+            "Path": "/", 
+            "Arn": "arn:aws:iam::939986559092:user/rlimbach"
+        }, 
+        {
+            "UserName": "rootv1", 
+            "PasswordLastUsed": "2019-12-06T16:36:41Z", 
+            "CreateDate": "2019-02-27T19:19:08Z", 
+            "UserId": "AIDAJOO2CBD4CVP6ERDXM", 
+            "Path": "/", 
+            "Arn": "arn:aws:iam::939986559092:user/rootv1"
+        }, 
+        {
+            "UserName": "udemy_user", 
+            "PasswordLastUsed": "2019-06-12T13:10:50Z", 
+            "CreateDate": "2019-05-21T11:04:27Z", 
+            "UserId": "AIDA5VW4QUB2LF4DNECOM", 
+            "Path": "/", 
+            "Arn": "arn:aws:iam::939986559092:user/udemy_user"
+        }, 
+        {
+            "UserName": "user-name", 
+            "Path": "/", 
+            "CreateDate": "2019-11-30T20:43:29Z", 
+            "UserId": "AIDA5VW4QUB2GYIRKGR2N", 
+            "Arn": "arn:aws:iam::939986559092:user/user-name"
+        }
+    ]
+}

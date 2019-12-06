@@ -1,0 +1,42 @@
+#Author: Birju
+# template to create user
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label: 
+          default: User Name
+        Parameters:
+          - IamCreateUser
+      - Label:
+          default: New ParameterGroups
+        Parameters:
+          - TestString
+Parameters:
+  TestString:
+    Type:  String
+    Description: TestString 
+  IamCreateUser:
+    Type: String
+    Description: Enter User Name
+    Default: user-name
+Resources:
+  ResIamCreateUser:
+    Type: AWS::IAM::User
+    Properties:
+      Groups:
+        - !Ref ResUserGroup
+      UserName: !Ref IamCreateUser
+      Tags:
+        - Key: Name
+          Value: !Join
+            - ""
+            - - 'Created via cloudformation. StackName: '
+              - !Ref AWS::StackName
+  ResUserGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: cfn-user-group-created
+      ManagedPolicyArns:
+        - arn:aws:iam::939986559092:policy/AWSPowerUser

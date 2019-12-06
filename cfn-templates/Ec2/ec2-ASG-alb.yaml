@@ -1,0 +1,100 @@
+# Author: Birju Patel
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      AMI: ami-1853ac65
+    us-west-1:
+      AMI: ami-bf5540df
+    eu-west-1:
+      AMI: ami-3bfab942
+    ap-southeast-1:
+      AMI: ami-e2adf99e
+    ap-southeast-2:
+      AMI: ami-43874721
+Metadata:
+  AWS::CloudFormation::Interface:
+    -
+      Label: Key Pair
+      Parameters: 
+        -KeyName
+      
+      Label: Vpc Id
+      Parameters:
+        - VpcId
+      Label: Select Subnet
+        - SubnetIds
+Parameters:
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Ec2 Key Pair
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Enter VPC 
+  SubnetIds:
+    Type:  AWS::EC2::Subnet::Id
+    Description: Enter Subnets
+
+Resources:
+  Ec2Instance:
+    Type: AWS::EC2::Instance
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          packages:
+            yum:
+              httpd: []
+              php: []
+          files:
+            /var/www/html/index.php:
+              content: !Sub |
+                <?php print "Welcome home page"; ?>
+          services:
+            sysvinit:
+              httpd:
+                EnsureRunning: true
+                enabled: true
+    Properties:
+      InstanceType: t2.micro
+      ImageId:
+        !FindInMap
+          - RegionMap
+          - !Ref AWS::Region
+          - AMI
+      SecurityGroupIds: 
+        - !Ref SecurityGroup
+      KeyName: !Ref KeyName
+      UserData:
+        'Fn::Base64':
+          !Sub |
+            #!/bin/bash -xe
+            #Install update files if needed
+            yum install -y aws-cfn-bootstrap
+            /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource Ec2Instance --region ${AWS::Region}
+      Tags: sudo service httpd start
+            sudo chkconfig httpd on
+            sudo service httpd status
+        - Key: Name
+          Value: 
+            !Join
+              - ""
+              - - "cfn-ec2-instance-"
+                - !Ref AWS::Region
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: open ports 22 and 80
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          ToPort: 22
+          FromPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          ToPort: 80
+          FromPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: 'cfn-asg-ec2'
+
+      

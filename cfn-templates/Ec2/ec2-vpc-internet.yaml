@@ -1,0 +1,138 @@
+#Template Version for simple ec2 instance
+#Author: BP
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    - Label: 
+        Description: Please enter VPC name
+      Parameters:
+        - VpcName
+Parameters:
+  VpcName:
+    Type: String
+    Default: custom-vpc
+Mappings:
+  RegionMap:
+    us-east-1:
+      AMI: ami-1853ac65
+    us-west-1:
+      AMI: ami-bf5540df
+    eu-west-1:
+      AMI: ami-3bfab942
+    ap-southeast-1:
+      AMI: ami-e2adf99e
+    ap-southeast-2:
+      AMI: ami-43874721
+      
+Resources:
+  CustomVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      InstanceTenancy: default
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Ref VpcName
+  CustomPublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: us-east-1a
+      VpcId: !Ref CustomVpc
+      CidrBlock: 10.0.1.0/28
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - ""
+              -  "cfn-subnet-"
+                 !GetAtt CustomPublicSubnet1.AvailabilityZone
+          Key: VPC-Id
+          Value: !Ref CustomVpc
+  CustomRouteTables:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref CustomVpc
+      Tags:
+        - Key: Name
+          Value: cfn-custom-route-table
+  CustomRoutes:
+    Type:  AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref CustomRouteTables
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref CustomInternetGateway
+  CustomNetworkInterface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      Description: Cfn-custom-network interface
+      SubnetId: !Ref CustomPublicSubnet1
+      Tags:
+       - Key: Name
+         Value: cfn-custom-network-interface
+  CustomNetworkInterfaceAttachment:
+    Type:  AWS::EC2::NetworkInterfaceAttachment
+    Properties:
+      NetworkInterfaceId: !Ref CustomNetworkInterface
+      InstanceId: !Ref Ec2Instance
+      DeviceIndex: 1
+  CustomInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: cfn-igw-custom
+  CustomVPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref CustomInternetGateway
+      VpcId: !Ref CustomVpc
+  CustomSubnetRouteTableAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref CustomRouteTables
+      SubnetId: !Ref CustomPublicSubnet1
+  CustomSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: cfn-sg
+      GroupDescription: cfn-custom-sg
+      VpcId: !Ref CustomVpc 
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          ToPort: 80
+          FromPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          ToPort: 22
+          FromPort: 22
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: cfn-custom-sg
+  Ec2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId:
+        !FindInMap
+          - RegionMap
+          - !Ref AWS::Region
+          - AMI
+      SubnetId: !Ref CustomPublicSubnet1
+      SecurityGroupIds:
+        - !GetAtt CustomSecurityGroup.GroupId
+      Tags:
+        - Key: Name
+          Value: cfn-instance
+      NetworkInterface:
+        - AssociatePublicIpAddress: true
+          NetworkInterfaceId: !Ref CustomNetworkInterface   
+Outputs:
+  outputVpcName:
+    Description: Vpc Id
+    Value: !Ref CustomVpc
+  outputPublicSubnet1:
+    Description: cfn Public Subnet 1
+    Value: !Ref CustomPublicSubnet1
