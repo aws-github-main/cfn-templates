@@ -1,0 +1,114 @@
+# Author: Birju Patel
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      AMI: ami-1853ac65
+    us-west-1:
+      AMI: ami-bf5540df
+    eu-west-1:
+      AMI: ami-3bfab942
+    ap-southeast-1:
+      AMI: ami-e2adf99e
+    ap-southeast-2:
+      AMI: ami-43874721
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label: ASG Name
+        Parameters: 
+          -AsgName
+        Label: Key Pair
+        Parameters: 
+          -KeyName
+        Label: Vpc Id
+        Parameters:
+          - VpcId
+        Label: Select Subnet
+        Parameters:
+          - SubnetIds
+Parameters:
+  AsgName:
+    Type: String
+    Description: ASG Name
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Ec2 Key Pair
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Enter VPC 
+  SubnetIds:
+    Type:  List<AWS::EC2::Subnet::Id>
+    Description: Enter Subnets
+
+Resources:
+  LaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          packages:
+            yum:
+              httpd: []
+              php: []
+          files:
+            /var/www/html/index.php:
+              content: !Sub |
+                <?php print "Welcome home page"; ?>
+          services:
+            sysvinit:
+              httpd:
+                ensureRunning: true
+                enabled: true
+    Properties:
+      AssociatePublicIpAddress: true
+      ImageId: 
+        !FindInMap
+          - RegionMap
+          - !Ref AWS::Region
+          - AMI
+      InstanceType: t2.micro
+      KeyName: !Ref KeyName
+      
+      SecurityGroups:
+        - !Ref launchConfigSG 
+      UserData:
+        'Fn::Base64': 
+          !Sub |
+            #!/bin/bash -xe
+            yum install -y aws-cfn-bootstrap 
+            #install files from metadata
+            /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchConfiguration --region ${AWS::Region}
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: asg-cfn-ec2
+      AvailabilityZones: !GetAZs
+      DesiredCapacity: 2
+      LaunchConfigurationName: !Ref LaunchConfiguration
+      MaxSize: 2
+      MinSize: 2
+  launchConfigSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: open ports 22 and 80(updated)
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          ToPort: 80
+          FromPort: 80
+          CidrIp: 0.0.0.0/0
+  Ec2InstanceSGInboundRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      ToPort: 22
+      FromPort: 22
+      CidrIp: 0.0.0.0/0
+      GroupId: !GetAtt launchConfigSG.GroupId
+
+
+
+
+      

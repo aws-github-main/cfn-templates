@@ -32,7 +32,7 @@ Parameters:
     Type: AWS::EC2::VPC::Id
     Description: Enter VPC 
   SubnetIds:
-    Type:  AWS::EC2::Subnet::Id
+    Type:  List<AWS::EC2::Subnet::Id>
     Description: Enter Subnets
 
 Resources:
@@ -80,6 +80,19 @@ Resources:
               - ""
               - - "cfn-ec2-instance-"
                 - !Ref AWS::Region
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: cfn-alb
+      IpAddressType: ipv4
+      Scheme: internet-facing
+      Subnets:
+        - !Ref SubnetIds
+      SecurityGroups:
+        - Ref SecurityGroup
+      Tags:
+        - Key: Name
+          Value: cfn-alb-ipv4
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
