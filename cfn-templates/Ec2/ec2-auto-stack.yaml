@@ -1,0 +1,96 @@
+# Author: Birju Patel
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      AMI: ami-1853ac65
+    us-west-1:
+      AMI: ami-bf5540df
+    eu-west-1:
+      AMI: ami-3bfab942
+    ap-southeast-1:
+      AMI: ami-e2adf99e
+    ap-southeast-2:
+      AMI: ami-43874721
+Resources:
+  cVpc:
+    Type: AWS::EC2::Vpc
+    Properties:
+      CidrBlock: 173.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: cfn-vpc
+  cSubnet:
+    Type: AWS::EC2:Subnet
+    Properties:
+      AvailabilityZone: us-east-1a
+      CidrBlock: 173.0.1.0/28
+      VpcId: !Ref cVpc
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: cfn-pub-subnet-us-east-1a
+  cInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: cfn-internet-gateway
+  cRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref cVpc
+      Tags:
+        - Key: Name
+          Value: cfn-route-table
+  cRoute1:
+    Type:  AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId: !Ref cRouteTable
+      GatewayId: !Ref cInternetGateway
+  cSubnetRouteTableAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref cRouteTable
+      SubnetId: !Ref cSubnet
+  cInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: cfn-EC2 Security Group
+      Tags:
+        - Key: Name
+          Value: cfn-ec2-sg-webserver
+      VpcId: !Ref VpcId
+  cAlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: cfn-alb-sg
+      VpcId: !Ref VpcId
+      Tags:
+        - Key: Name
+          Value: cfn-alb-sg
+  cSGInboundRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      ToPort: 80
+      FromPort: 80
+      GroupId: !GetAtt cInstanceSecurityGroup.GroupId
+      SourceSecurityGroupId: !GetAtt cAlbSecurityGroup.GroupId
+  cAlbInboundRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt cAlbSecurityGroup.GroupId
+      IpProtocol: tcp
+      ToPort: 80
+      FromPort: 80
+      CidrIp: 0.0.0.0/0
+Outputs:
+  oPublicDnsName:
+    Description: ALB-Ec2-cfn DnsName
+    Value: !Sub |
+      'http://${cLoadBalancer.DNSName}'

@@ -56,6 +56,9 @@ Resources:
             /var/www/html/index.php:
               content: !Sub |
                 <?php print "Welcome home page"; ?>
+            /var/www/html/health-check.php:
+              content: !Sub |
+                <?php print "This is health check page"; ?>
           services:
             sysvinit:
               httpd:
@@ -93,11 +96,14 @@ Resources:
     Properties:
       GroupDescription: open ports 22 and 80(added:alb-securitygroup)
       VpcId: !Ref VpcId
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          ToPort: 80
-          FromPort: 80
-          SourceSecurityGroupId: !GetAtt AlbSecurityGroup.GroupId
+  launchConfigSGInboundRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      ToPort: 80
+      FromPort: 80
+      SourceSecurityGroupId: !GetAtt AlbSecurityGroup.GroupId
+      GroupId: !GetAtt launchConfigSG.GroupId
   Ec2InstanceSGInboundRule:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -134,8 +140,11 @@ Resources:
     Properties:
       GroupDescription: Load Balancer SG - cfn 
       VpcId: !Ref VpcId
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          ToPort: 80
-          FromPort: 80
-          CidrIp: 0.0.0.0/0
+  AlbSecurityGroupInboundRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      ToPort: 80
+      FromPort: 80
+      CidrIp: 0.0.0.0/0
+      GroupId: !GetAtt AlbSecurityGroup.GroupId
