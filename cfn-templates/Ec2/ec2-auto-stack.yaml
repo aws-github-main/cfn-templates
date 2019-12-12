@@ -12,9 +12,19 @@ Mappings:
       AMI: ami-e2adf99e
     ap-southeast-2:
       AMI: ami-43874721
+Metadata:
+  AWS::CloudFormation::Interface:
+    -
+      Label: Key Pair
+      Parameters: 
+        -KeyName
+Parameters:
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Ec2 Key Pair
 Resources:
   cVpc:
-    Type: AWS::EC2::Vpc
+    Type: AWS::EC2::VPC
     Properties:
       CidrBlock: 173.0.0.0/16
       EnableDnsHostnames: true
@@ -24,7 +34,7 @@ Resources:
         - Key: Name
           Value: cfn-vpc
   cSubnet:
-    Type: AWS::EC2:Subnet
+    Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone: us-east-1a
       CidrBlock: 173.0.1.0/28
@@ -33,12 +43,27 @@ Resources:
       Tags:
         - Key: Name
           Value: cfn-pub-subnet-us-east-1a
+  cSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: us-east-1b
+      CidrBlock: 173.0.2.0/28
+      VpcId: !Ref cVpc
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: cfn-pub-subnet-us-east-1b
   cInternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
         - Key: Name
           Value: cfn-internet-gateway
+  cVpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref cInternetGateway
+      VpcId: !Ref cVpc
   cRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -57,6 +82,24 @@ Resources:
     Properties:
       RouteTableId: !Ref cRouteTable
       SubnetId: !Ref cSubnet
+  cRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref cVpc
+      Tags:
+        - Key: Name
+          Value: cfn-route-table-2
+  cRoute2:
+    Type:  AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId: !Ref cRouteTable2
+      GatewayId: !Ref cInternetGateway
+  cSubnetRouteTableAssoc2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref cRouteTable2
+      SubnetId: !Ref cSubnet2    
   cInstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -64,12 +107,12 @@ Resources:
       Tags:
         - Key: Name
           Value: cfn-ec2-sg-webserver
-      VpcId: !Ref VpcId
+      VpcId: !Ref cVpc
   cAlbSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: cfn-alb-sg
-      VpcId: !Ref VpcId
+      VpcId: !Ref cVpc
       Tags:
         - Key: Name
           Value: cfn-alb-sg
@@ -89,6 +132,90 @@ Resources:
       ToPort: 80
       FromPort: 80
       CidrIp: 0.0.0.0/0
+  cLaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          packages:
+            yum:
+              httpd: []
+              php: []
+          files:
+            /var/www/html/index.php:
+              content: !Sub |
+                <?php print "This is a php server home page!"; ?>
+          services:
+            sysvinit:
+              httpd:
+                ensureRunning: true
+                enabled: true
+    Properties:
+      ImageId: 
+        !FindInMap
+          - RegionMap
+          - !Ref AWS::Region
+          - AMI
+      InstanceType: t2.micro
+      AssociatePublicIpAddress: true
+      SecurityGroups: 
+        - !Ref cInstanceSecurityGroup
+      KeyName: !Ref KeyName
+      UserData:
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash -xe
+            # ensure ec2 is up to date
+            yum update -y aws-cfn-bootstrap
+            #install meta data 
+            /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource cLaunchConfiguration  --region ${AWS::Region}
+            #files have installed.
+  cLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties: 
+      IpAddressType: ipv4
+      SecurityGroups:
+        - !Ref cAlbSecurityGroup
+      Subnets: 
+        - !Ref cSubnet
+        - !Ref cSubnet2
+      Tags:
+        - Key: Name
+          Value: cfn-alb-ec2
+  cTargetGroup:
+    Type:  AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 80
+      Protocol: HTTP
+      Tags:
+        - Key: Name
+          Value: cfn-target-group
+      VpcId: !Ref cVpc
+  cLoadBalancerListener:
+    Type:  AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref cTargetGroup
+      LoadBalancerArn: !Ref cLoadBalancer
+      Port: 80
+      Protocol: HTTP
+  cAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        - !Ref cSubnet
+        - !Ref cSubnet2
+      LaunchConfigurationName: !Ref cLaunchConfiguration
+      MaxSize: 2
+      MinSize: 2
+      Tags:
+        - 
+          Key: Name
+          Value: cfn-asg-webserver
+          PropagateAtLaunch: 'true'
+      TargetGroupARNs: 
+        - !Ref cTargetGroup  
 Outputs:
   oPublicDnsName:
     Description: ALB-Ec2-cfn DnsName
