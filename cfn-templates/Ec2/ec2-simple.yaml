@@ -1,7 +1,7 @@
 #Template Version for simple ec2 instance
 #Author: BP
 Mappings:
-  RegionMap:
+  mRegionMap:
     us-east-1:
       AMI: ami-1853ac65
     us-west-1:
@@ -12,26 +12,56 @@ Mappings:
       AMI: ami-e2adf99e
     ap-southeast-2:
       AMI: ami-43874721
-      
+  mEnvironment:
+    Micro:
+      db: db.t2.micro
+      instance: t2.micro
+    Small:
+      db: db.t2.small
+      instance: t2.small
+    Medium:
+      db: db.t2.medium
+      instance: t2.medium    
+
+Parameters:
+  pKeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Enter Key Pair
+  pEnvironmentSize:
+    Type: String
+    AllowedValues:
+      - Micro
+      - Small
+      - Medium
+    Default: Micro
+    Description: Select environment 
 Resources:
-  Ec2Instance:
+  cEc2Instance:
     Type: AWS::EC2::Instance
     Properties:
-      InstanceType: t2.micro
+      InstanceType:
+        !FindInMap
+          - mEnvironment
+          - !Ref pEnvironmentSize
+          - instance  
       ImageId: 
         !FindInMap
-          - RegionMap
+          - mRegionMap
           - !Ref AWS::Region
           - 'AMI'
-      SecurityGroups:
-        - !Ref SecurityGroup
-  SecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: "Allow inbound SSH Traffic port 22 tcp"
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          ToPort: 22
-          FromPort: 22
-          CidrIp: 0.0.0.0/0
-      
+      UserData:
+        'Fn::Base64':
+          !Sub |
+            #!/bin/bash
+            yum install httpd php mysql php-mysql -y
+            yum update -y
+            chkconfig httpd on
+            service httpd start
+            cd /var/www/html
+            rm wordpress-5.1.1.tar.gz
+            cp wp-config-sample.php wp-config.php
+            sed -i 's/database_name_here/dbwordpress/g' wp-config.php
+            sed -i 's/localhost/wc9rm43k7y2tur.c3icyycb5xcu.us-east-1.rds.amazonaws.com/g' wp-config.php
+            sed -i 's/username_here/wpuser/g' wp-config.php
+            sed -i 's/password_here/wppassword/g' wp-config.php
+      KeyName: !Ref pKeyName
